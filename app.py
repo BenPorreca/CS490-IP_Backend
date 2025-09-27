@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import sqlalchemy as sa
 
 engine = sa.create_engine("mysql+mysqldb://root:B3njamin178@localhost:3306/sakila", echo=True)
@@ -7,13 +7,16 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return "Hello, Flask!"
-
 @app.route("/top5films")
 def script2():
     with engine.connect() as conn:
         result = conn.execute(sa.text("""
             select f.film_id,
                     f.title,
+                    f.description,
+                    f.release_year,
+                    f.rating,
+                    f.length,
                     c.name,
                     count(i.film_id) as rental_count
             from rental r
@@ -61,5 +64,49 @@ def script4(actor):
             order by rental_count desc
             limit 5;
         """), {"actor_id": actor})
+        data = [dict(row._mapping) for row in result]
+    return jsonify(data)
+
+@app.route("/search")
+def script5():
+    with engine.connect() as conn:
+        query = request.args.get('query')
+        type = request.args.get('type')
+
+        if (type == 'movie'):
+            result = conn.execute(sa.text("""
+                select f.title
+                from film f
+                where f.title like upper(:query);
+            """), {"query": f"%{query}%"})
+        elif (type == 'genre'):
+            result = conn.execute(sa.text("""
+                select f.title
+                from film f
+                join film_category fc on f.film_id = fc.film_id 
+                join category c on fc.category_id  = c.category_id
+                where c.name like upper(:query);
+            """), {"query": f"%{query}%"})
+        elif (type == 'actor'):
+            result = conn.execute(sa.text("""
+                select f.title,
+                        a.first_name,
+                        a.last_name
+                from film f
+                join film_actor fa on f.film_id = fa.film_id 
+                join actor a on fa.actor_id  = a.actor_id 
+                where concat(a.first_name, ' ', a.last_name) like upper(:query);
+            """), {"query": f"%{query}%"})
+            #check for null case
+        data = [dict(row._mapping) for row in result]
+    return jsonify(data)
+
+@app.route("/customers")
+def script6():
+    with engine.connect() as conn:
+        result = conn.execute(sa.text("""
+            select *
+            from customer c
+        """))
         data = [dict(row._mapping) for row in result]
     return jsonify(data)
