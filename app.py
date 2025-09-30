@@ -54,6 +54,10 @@ def script4(actor):
         result = conn.execute(sa.text("""
             select f.film_id,
                     f.title,
+                    f.description,
+                    f.release_year,
+                    f.rating,
+                    f.length,
                     count(r.rental_id) as rental_count
             from rental r
             join inventory i on r.inventory_id  = i.inventory_id 
@@ -75,13 +79,17 @@ def script5():
 
         if (type == 'movie'):
             result = conn.execute(sa.text("""
-                select f.title
+                select f.title,
+                       f.description,
+                        f.film_id
                 from film f
                 where f.title like upper(:query);
             """), {"query": f"%{query}%"})
         elif (type == 'genre'):
             result = conn.execute(sa.text("""
-                select f.title
+                select f.title,
+                       c.name,
+                        f.film_id
                 from film f
                 join film_category fc on f.film_id = fc.film_id 
                 join category c on fc.category_id  = c.category_id
@@ -91,7 +99,8 @@ def script5():
             result = conn.execute(sa.text("""
                 select f.title,
                         a.first_name,
-                        a.last_name
+                        a.last_name,
+                        f.film_id
                 from film f
                 join film_actor fa on f.film_id = fa.film_id 
                 join actor a on fa.actor_id  = a.actor_id 
